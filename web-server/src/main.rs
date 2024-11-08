@@ -1,13 +1,15 @@
 #[macro_use]
 extern crate rocket;
 use rocket::fs::NamedFile;
-use rocket::response::content::{RawHtml, RawStream};
+use rocket::response::content::RawHtml;
+use rocket::response::stream::ReaderStream;
 use rocket::serde::json::Json;
 use rocket::serde::Serialize;
 use reqwest::Client;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::PathBuf;
+use std::sync::Arc;
 use sysinfo::System;
 
 #[derive(Serialize)]
@@ -36,18 +38,17 @@ fn read_cpu_temperature() -> io::Result<f32> {
     Ok(temp)
 }
 
-fn formate_memory(value: u64) -> (u64, String) {
-    let result = if value < 1000 {
+fn format_memory(value: u64) -> (u64, String) {
+    if value < 1000 {
         (value, "B".to_string())
-    } else if value < 1000000 {
-        (value / 1000, "KB".to_string())
+    } else if value < 1_000_000 {
+        (value / 1_000, "KB".to_string())
     } else {
-        (value / 1000000, "MB".to_string())
-    };
-    result
+        (value / 1_000_000, "MB".to_string())
+    }
 }
 
-fn formate_time(value: u64) -> String {
+fn format_time(value: u64) -> String {
     let days = value / 86400;
     let hours = (value % 86400) / 3600;
     let minutes = (value % 3600) / 60;
@@ -143,10 +144,10 @@ fn index() -> RawHtml<String> {
 }
 
 #[get("/camera-stream")]
-async fn camera_stream(client: &Client) -> Option<RawStream<reqwest::Response>> {
+async fn camera_stream(client: &rocket::State<Arc<Client>>) -> Option<ReaderStream<reqwest::Response>> {
     let esp32_url = "http://<ESP32_CAM_IP>/"; // TODO: Replace with ESP32 CAM IP address
     if let Ok(response) = client.get(esp32_url).send().await {
-        Some(RawStream(response))
+        Some(ReaderStream::new(response.bytes_stream()))
     } else {
         None
     }
@@ -160,23 +161,23 @@ fn pi_data() -> Json<RaspberryPiData> {
     // Read CPU temperature
     let cpu_temperature = read_cpu_temperature().unwrap_or(0.0);
 
-    let (total_memory, total_memory_size) = formate_memory(sys.total_memory());
-    let (used_memory, used_memory_size) = formate_memory(sys.used_memory());
-    let (total_swap, total_swap_size) = formate_memory(sys.total_swap());
-    let (used_swap, used_swap_size) = formate_memory(sys.used_swap());
+    let (total_memory, total_memory_size) = format_memory(sys.total_memory());
+    let (used_memory, used_memory_size) = format_memory(sys.used_memory());
+    let (total_swap, total_swap_size) = format_memory(sys.total_swap());
+    let (used_swap, used_swap_size) = format_memory(sys.used_swap());
 
     Json(RaspberryPiData {
         cpu_usage: sys.global_cpu_usage(),
-        total_memory: total_memory,
-        total_memory_size: total_memory_size,
-        used_memory: used_memory,
-        used_memory_size: used_memory_size,
-        total_swap: total_swap,
-        total_swap_size: total_swap_size,
-        used_swap: used_swap,
-        used_swap_size: used_swap_size,
-        cpu_temperature, // Include CPU temperature in the response
-        uptime: formate_time(System::uptime()),
+        total_memory,
+        total_memory_size,
+        used_memory,
+        used_memory_size,
+        total_swap,
+        total_swap_size,
+        used_swap,
+        used_swap_size,
+        cpu_temperature,
+        uptime: format_time(System::uptime()),
         name: System::host_name(),
     })
 }
@@ -190,5 +191,9 @@ async fn favicon() -> Option<NamedFile> {
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/status", routes![index, pi_data, favicon, camera_stream])
+    let client = Arc::new(Client::new());
+
+    rocket::build()
+        .manage(client)
+        .mount("/status", routes![index, pi_data, favicon, camera_stream])
 }
