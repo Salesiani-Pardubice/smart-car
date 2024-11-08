@@ -1,9 +1,10 @@
 #[macro_use]
 extern crate rocket;
 use rocket::fs::NamedFile;
-use rocket::response::content::RawHtml;
+use rocket::response::content::{RawHtml, RawStream};
 use rocket::serde::json::Json;
 use rocket::serde::Serialize;
+use reqwest::Client;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::PathBuf;
@@ -130,11 +131,25 @@ fn index() -> RawHtml<String> {
                 <p>Total Swap: <span id="total-swap">Loading...</span></p>
                 <p>Used Swap: <span id="used-swap">Loading...</span></p>
             </div>
+            <div class="data">
+                <h2>ESP32 CAM Stream</h2>
+                <img src="/status/camera-stream" alt="ESP32 CAM Stream" style="width:100%; max-width:600px;">
+            </div>
         </body>
         </html>
     "#;
 
     RawHtml(html.to_string())
+}
+
+#[get("/camera-stream")]
+async fn camera_stream(client: &Client) -> Option<RawStream<reqwest::Response>> {
+    let esp32_url = "http://<ESP32_CAM_IP>/"; // TODO: Replace with ESP32 CAM IP address
+    if let Ok(response) = client.get(esp32_url).send().await {
+        Some(RawStream(response))
+    } else {
+        None
+    }
 }
 
 #[get("/pi-data")]
@@ -144,7 +159,6 @@ fn pi_data() -> Json<RaspberryPiData> {
 
     // Read CPU temperature
     let cpu_temperature = read_cpu_temperature().unwrap_or(0.0);
-    
 
     let (total_memory, total_memory_size) = formate_memory(sys.total_memory());
     let (used_memory, used_memory_size) = formate_memory(sys.used_memory());
@@ -176,5 +190,5 @@ async fn favicon() -> Option<NamedFile> {
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/status", routes![index, pi_data, favicon])
+    rocket::build().mount("/status", routes![index, pi_data, favicon, camera_stream])
 }
