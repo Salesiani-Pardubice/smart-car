@@ -2,7 +2,6 @@
 
 Servo myServo;         // Create a Servo object
 int servoPin = 16;     // Pin connected to the MG996R signal pin
-int angle = 0;         // Variable to store the servo angle
 
 void setup() {
   // Attach the servo to the pin
@@ -19,12 +18,12 @@ void loop() {
   delay(1000);  // Wait for 1 second
 
   // Move the servo to 90 degrees
-  myServo.write(90);
-  Serial.println("Servo at 90 degrees");
+  myServo.write(45);
+  Serial.println("Servo at 45 degrees");
   delay(1000);  // Wait for 1 second
 
   // Move the servo to 180 degrees
-  myServo.write(180);
-  Serial.println("Servo at 180 degrees");
-  delay(1000);  // Wait for 1 second
+  myServo.write(90);
+  Serial.println("Servo at 90 degrees");
+  delay(5000);  // Wait for 1 second
 }
