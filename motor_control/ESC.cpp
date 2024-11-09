@@ -42,5 +42,5 @@ void ESC::detach(){
 
 void ESC::attach(int pin){
   esc.attach(pin);
-  //setSpeed(0);
+  setSpeed(0);
 }

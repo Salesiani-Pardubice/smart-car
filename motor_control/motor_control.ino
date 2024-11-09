@@ -9,20 +9,41 @@
  */
 ESC esc(ESC::MODE_FORWARD_BACKWARD);
 
-void setup() 
-{ 
-    esc.attach(ESC_PIN);
-    esc.setSpeed(30);
-    vTaskDelay(1000);
-    esc.setSpeed(0);
-    vTaskDelay(1000);
-    esc.setSpeed(35);
-    vTaskDelay(1000);
-    esc.setSpeed(30);
-    vTaskDelay(1000);
-    esc.setSpeed(-30);
-    vTaskDelay(10000);
 
+void setup()
+{ 
+
+    Serial.begin(115200);
+
+
+    esc.attach(ESC_PIN);
+
+    esc.setSpeed(50);
+    delay(1000);
+    
+    esc.setSpeed(100);
+    delay(1000);
+
+    esc.setSpeed(250);
+    delay(1000);
+
+
+    esc.setSpeed(400);
+    delay(1000);
+
+    esc.setSpeed(500);
+    delay(1000);
+
+    esc.setSpeed(200);
+    delay(1000);
+
+    esc.setSpeed(0);
+    delay(1000);
+
+    delay(1000);
+
+
+    
 } 
  
 void loop() 
